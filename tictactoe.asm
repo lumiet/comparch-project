@@ -60,7 +60,7 @@ gameLoop:
 	sllv $s0, $s0, $v0 # convert input number into board position, 2^(n - 1)
 
 	#check if position is filled
-	lw $t7, ($s7) # 4($s7) is position[1], which is the unmarked bit string
+	lw $t7, ($s7) # ($s7) is position[0], which is the unmarked bit string
 	and $t1, $s0, $t7 # binary and unmarked and desired move, store result in $t1
 	beq $t1, 0, gameLoop # !restarts loop if desired move is unavailable, maybe add message to check if valid/seperate error handling
 
@@ -149,7 +149,7 @@ simpleMovePref:
 	
 	#check if position is filled
 	lw $t7, ($s7) # ($s7) is position[0], which is the unmarked bit string
-	and $t1, $s0, $t7 # binary and unmarked and desired move, store result in $t1
+	and $t1, $s1, $t7 # binary and unmarked and desired move, store result in $t1
 	beq $t1, 0, simpleSkip
 
 	#play move
@@ -159,18 +159,16 @@ simpleMovePref:
 	add $t0, $t0, $s1 # add desired move to computer position
 	sw $t0, 8($s7) # store computer position
 	j compMoveExit # now that move is made, exit
+	
 simpleSkip:
 	addi $s0, $s0, 1 #increment index
 	bne $s0, 9, simpleMovePref #if index = 9, all moves have been iterated through, so no need to make any move
 	
 compMoveExit:
 
-	# -- check if tied --
-	
-	lw $t0, ($s7) # load unmarked position
-	beq $t0, 0, tie # if unmarked = 0, print tie message
 	
 	# -- check if won --
+	
 	li $s0, 0 # set starting index to 0 (iterating through win3s)
 winCheckLoop:
 	sll $t1, $s0, 2 # index * 4
@@ -185,9 +183,14 @@ winCheckLoop:
 	and $t5, $t3, $t4 # binary and computer position with winning 3
 	beq $t5, $t3, oWin # if result of and is the same as winning 3, computer has won
 	
-	beq $t0, 7, gameLoop # if index = 7, every winning 3 has been checked
 	addi $s0, $s0, 1 # increment $t0/index
-	j winCheckLoop # continue checking if game is won
+	bne $s0, 8, winCheckLoop # if index = 8, every winning 3 has been checked and can move on
+	
+	# -- check if tied --
+	
+	lw $t0, ($s7) # load unmarked position
+	beq $t0, 0, tie # if unmarked = 0, print tie message
+	j gameLoop # otherwise, restart loop
 	
 xWin: 
 	#display final position ! temporary !
