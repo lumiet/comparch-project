@@ -9,16 +9,21 @@ position: .word 511, 0, 0	#base address for array position, position[0] = unmark
 							#board starts fully unmarked
 playerPrompt: .asciiz "Player move: "
 newLine: .asciiz "\n"
+xVict: .asciiz "X wins!"
+oVict: .asciiz "O wins!"
 AIMovePref: .word 16, 64, 256, 1, 4, 128, 8, 32, 2 # (5 > 7 > 9 > 1 > 3 > 8 > 4 > 6 > 2) (center > corners > sides)
 
 
 .text
-
 	#load position address
 	la $s7, position
 	
+	#load winning 3s address
+	la $s6, win3s
+	
 gameLoop:
 	#display position
+	# ! This is temporary !
 	li $v0, 1 #print integer
 	lw $a0, 0($s7) #print unmarked
 	syscall
@@ -62,11 +67,77 @@ gameLoop:
 	
 	#computer move
 	
+	#check if game is won
+	li $t0, 0 #set starting index to 0
 	
-	j gameLoop #temp end of gameloop
+winCheckLoop:
+	sll $t1, $t0, 2 # index * 4
+	add $t2, $s6, $t1 # win3s[index] = win3s + (index * 4)
+	lw $t3, ($t2) # load winning 3 in $t3
 	
+	lw $t4, 4($s7) # load player/x position
+	and $t5, $t3, $t4 # binary and player position with winning 3
+	beq $t5, $t3, xWin # if result of and is the same as winning 3, player has won
 	
-	j Exit #exit
+	lw $t4, 8($s7) # load computer/o position
+	and $t5, $t3, $t4 # binary and computer position with winning 3
+	beq $t5, $t3, oWin # if result of and is the same as winning 3, computer has won
+	
+	beq $t0, 7, gameLoop # if index = 7, every winning 3 has been checked
+	addi $t0, $t0, 1 # increment $t0/index
+	j winCheckLoop # continue checking if game is won
+	
+xWin: 
+	#display final position ! temporary !
+	
+	li $v0, 1 #print integer
+	lw $a0, 0($s7) #print unmarked
+	syscall
+	li $v0, 4 # print string
+	la $a0, newLine #load new line
+	syscall
+	li $v0, 1
+	lw $a0, 4($s7) #print print x's
+	syscall
+	li $v0, 4 # print string
+	la $a0, newLine #load new line
+	syscall
+	li $v0, 1
+	lw $a0, 8($s7) #print o's
+	syscall
+	
+	li $v0, 4 #print string
+	la $a0, xVict # load x victory message
+	syscall
+	j Exit #exit program
+	
+oWin: 
+	#display final position ! temporary !
+	
+	li $v0, 1 #print integer
+	lw $a0, 0($s7) #print unmarked
+	syscall
+	li $v0, 4 # print string
+	la $a0, newLine #load new line
+	syscall
+	li $v0, 1
+	lw $a0, 4($s7) #print print x's
+	syscall
+	li $v0, 4 # print string
+	la $a0, newLine #load new line
+	syscall
+	li $v0, 1
+	lw $a0, 8($s7) #print o's
+	syscall
+	
+	li $v0, 4 #print string
+	la $a0, oVict # load o victory message
+	syscall
+	j Exit #exit program
+	
+
+# Procedure section
+# ! Below code should only ever be accessed through procedure calls !
 
 andCount: # takes bit string (of length 9) in a0 and a1, returns number of 1s they have in common
 	subu $sp, $sp, 32 #allocate stack
