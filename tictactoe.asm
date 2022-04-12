@@ -143,7 +143,7 @@ loseSkip:
 	
 	li $s0, 0 #set starting index to 0 (iterating through AIMovePref
 simpleMovePref:
-	sll $t1, $t0, 2 # index * 4
+	sll $t1, $s0, 2 # index * 4
 	add $t2, $s5, $t1 # AIMovePref[index] = AIMovePref + (index * 4)
 	lw $s1, ($t2) # load desired move in $s1
 	
