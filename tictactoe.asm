@@ -12,8 +12,13 @@ newLine: .asciiz "\n"
 xVict: .asciiz "X wins!"
 oVict: .asciiz "O wins!"
 tieMessage: .asciiz "It's a tie...."
-AIMovePref: .word 16, 64, 256, 1, 4, 128, 8, 32, 2 # (5 > 7 > 9 > 1 > 3 > 8 > 4 > 6 > 2) (center > corners > sides)
-
+oChar: .asciiz "O"
+xChar: .asciiz "X"
+blankChar: .asciiz "_"
+spaceChar: .asciiz " "
+dividerChar: .asciiz "|"
+AIMovePref: .word 16, 64, 256, 1, 4, 128, 8, 32, 2 # (5 &gt; 7 &gt; 9 &gt; 1 &gt; 3 &gt; 8 &gt; 4 &gt; 6 &gt; 2) (center &gt; corners &gt; sides)
+errorMessage: .asciiz "Invalid move, try again."
 
 .text
 	#load position address
@@ -27,23 +32,89 @@ AIMovePref: .word 16, 64, 256, 1, 4, 128, 8, 32, 2 # (5 > 7 > 9 > 1 > 3 > 8 > 4 
 	
 gameLoop:
 	# -- display position --
-	# ! This is temporary !
+	li $t3, 0 #loop index
+	displayLoop:
+		lw $t0, ($s7) #unmarked
+		srlv $t0,$t0,$t3 #shift left by # of loop counter
+		andi $t1, $t0, 1 #binary and unmarked with one
+		beq $t1, 1, printBlank #if result = 1, print blank
+		beqz $t1, printChar #if result = 0, check X/O's
+		printChar:
+			lw $t0, 4($s7) #load X's
+			sllv $t0,$t0,$t3 #shift left by # of loop counter
+			andi $t1, $t0, 1 #binary and X's with one
+			beq $t1, 1, printX #if result = 1, print X char
+			beqz $t1, printO #if not X and not unmarked, print O
+				printX:
+					li $v0, 4 #print string
+					la $a0, xChar #print X
+					syscall
+					la $a0, spaceChar #print space
+					syscall
+					addi $t3, $t3, 1 #increment loop counter
+					div $t4, $t3, 3
+					mfhi $t5 #if $t5=0, then i%3 = 0
+					beq $t5, 0, printNewline #if i%3 = 0, print newline
+					bgtz $t5, printDivider #else print divider
+					
+				printO:
+					li $v0, 4 #print string
+					la $a0, oChar #print O
+					syscall
+					la $a0, spaceChar #print space
+					syscall
+					addi $t3, $t3, 1 #increment loop counter
+					div $t4, $t3, 3
+					mfhi $t5 #if $t5=0, then i%3 = 0
+					beq $t5, 0, printNewline #if i%3 = 0, print newline
+					bgtz $t5, printDivider #else print divider
+		printBlank:			
+			li $v0, 4 #print string
+			la $a0, blankChar #print _
+			syscall
+			la $a0, spaceChar #print space
+			syscall
+			addi $t3, $t3, 1 #increment loop counter
+			div $t4, $t3, 3
+			mfhi $t5 #if $t5=0, then i%3 = 0
+			beq $t5, 0, printNewline #if i%3 = 0, print newline
+			bgtz $t5, printDivider #else print divider
+			
+		printNewline:
+			li $v0, 4 #print string
+			la $a0, newLine #print \n
+			syscall
+			blt $t3, 9, displayLoop
+			bge $t3, 9, exitDisplay
+			
+		printDivider:
+			li $v0, 4 #print string
+			la $a0, dividerChar #print |
+			syscall
+			la $a0, spaceChar #print space
+			syscall
+			blt $t3, 9, displayLoop
+			bge $t3, 9, exitDisplay
+		
 	
-	li $v0, 1 #print integer
-	lw $a0, ($s7) #print unmarked
-	syscall
-	li $v0, 4 # print string
-	la $a0, newLine #load new line
-	syscall
-	li $v0, 1
-	lw $a0, 4($s7) #print print x's
-	syscall
-	li $v0, 4 # print string
-	la $a0, newLine #load new line
-	syscall
-	li $v0, 1
-	lw $a0, 8($s7) #print o's
-	syscall
+	exitDisplay:
+	
+	
+	#li $v0, 1 #print integer
+	#lw $a0, ($s7) #print unmarked
+	#syscall
+	#li $v0, 4 # print string
+	#la $a0, newLine #load new line
+	#syscall
+	#li $v0, 1
+	#lw $a0, 4($s7) #print print x's
+	#syscall
+	#li $v0, 4 # print string
+	#la $a0, newLine #load new line
+	#syscall
+	#li $v0, 1
+	#lw $a0, 8($s7) #print o's
+	#syscall
 
 	# -- player move --
 	
@@ -62,7 +133,7 @@ gameLoop:
 	#check if position is filled
 	lw $t7, ($s7) # ($s7) is position[0], which is the unmarked bit string
 	and $t1, $s0, $t7 # binary and unmarked and desired move, store result in $t1
-	beq $t1, 0, gameLoop # !restarts loop if desired move is unavailable, maybe add message to check if valid/seperate error handling
+	beq $t1, 0, invalidChoice # !restarts loop if desired move is unavailable, maybe add message to check if valid/seperate error handling
 
 	#play move
 	sub $t7, $t7, $s0 # subtract desired move from unmarked
@@ -264,7 +335,14 @@ tie:
 	syscall
 	j Exit #exit program
 	
+invalidChoice:
+	#li $v0, 4
+	#la $a0, errorMessage
+	#syscall
+	j gameLoop
 
+
+	
 # Procedure section
 # ! Below code should only ever be accessed through procedure calls !
 
