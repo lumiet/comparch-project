@@ -35,13 +35,13 @@ gameLoop:
 	li $t3, 0 #loop index
 	displayLoop:
 		lw $t0, ($s7) #unmarked
-		srlv $t0,$t0,$t3 #shift left by # of loop counter
+		srlv $t0,$t0,$t3 #shift right by # of loop counter
 		andi $t1, $t0, 1 #binary and unmarked with one
 		beq $t1, 1, printBlank #if result = 1, print blank
 		beqz $t1, printChar #if result = 0, check X/O's
 		printChar:
 			lw $t0, 4($s7) #load X's
-			sllv $t0,$t0,$t3 #shift left by # of loop counter
+			srlv $t0,$t0,$t3 #shift right by # of loop counter
 			andi $t1, $t0, 1 #binary and X's with one
 			beq $t1, 1, printX #if result = 1, print X char
 			beqz $t1, printO #if not X and not unmarked, print O
@@ -115,6 +115,30 @@ gameLoop:
 	#li $v0, 1
 	#lw $a0, 8($s7) #print o's
 	#syscall
+	
+	# -- check if won --
+	
+	li $s0, 0 # set starting index to 0 (iterating through win3s)
+winCheckLoop:
+	sll $t1, $s0, 2 # index * 4
+	add $t2, $s6, $t1 # win3s[index] = win3s + (index * 4)
+	lw $t3, ($t2) # load winning 3 in $t3
+	
+	lw $t4, 4($s7) # load player/x position
+	and $t5, $t3, $t4 # binary and player position with winning 3
+	beq $t5, $t3, xWin # if result of and is the same as winning 3, player has won
+	
+	lw $t4, 8($s7) # load computer/o position
+	and $t5, $t3, $t4 # binary and computer position with winning 3
+	beq $t5, $t3, oWin # if result of and is the same as winning 3, computer has won
+	
+	addi $s0, $s0, 1 # increment $t0/index
+	bne $s0, 8, winCheckLoop # if index = 8, every winning 3 has been checked and can move on
+	
+	# -- check if tied --
+	
+	lw $t0, ($s7) # load unmarked position
+	beq $t0, 0, tie # if unmarked = 0, print tie message
 
 	# -- player move --
 	
@@ -238,98 +262,21 @@ simpleSkip:
 compMoveExit:
 
 	
-	# -- check if won --
-	
-	li $s0, 0 # set starting index to 0 (iterating through win3s)
-winCheckLoop:
-	sll $t1, $s0, 2 # index * 4
-	add $t2, $s6, $t1 # win3s[index] = win3s + (index * 4)
-	lw $t3, ($t2) # load winning 3 in $t3
-	
-	lw $t4, 4($s7) # load player/x position
-	and $t5, $t3, $t4 # binary and player position with winning 3
-	beq $t5, $t3, xWin # if result of and is the same as winning 3, player has won
-	
-	lw $t4, 8($s7) # load computer/o position
-	and $t5, $t3, $t4 # binary and computer position with winning 3
-	beq $t5, $t3, oWin # if result of and is the same as winning 3, computer has won
-	
-	addi $s0, $s0, 1 # increment $t0/index
-	bne $s0, 8, winCheckLoop # if index = 8, every winning 3 has been checked and can move on
-	
-	# -- check if tied --
-	
-	lw $t0, ($s7) # load unmarked position
-	beq $t0, 0, tie # if unmarked = 0, print tie message
-	j gameLoop # otherwise, restart loop
+	j gameLoop # restart loop
 	
 xWin: 
-	#display final position ! temporary !
-	
-	li $v0, 1 #print integer
-	lw $a0, ($s7) #print unmarked
-	syscall
-	li $v0, 4 # print string
-	la $a0, newLine #load new line
-	syscall
-	li $v0, 1
-	lw $a0, 4($s7) #print print x's
-	syscall
-	li $v0, 4 # print string
-	la $a0, newLine #load new line
-	syscall
-	li $v0, 1
-	lw $a0, 8($s7) #print o's
-	syscall
-	
 	li $v0, 4 #print string
 	la $a0, xVict # load x victory message
 	syscall
 	j Exit #exit program
 	
 oWin: 
-	#display final position ! temporary !
-	
-	li $v0, 1 #print integer
-	lw $a0, ($s7) #print unmarked
-	syscall
-	li $v0, 4 # print string
-	la $a0, newLine #load new line
-	syscall
-	li $v0, 1
-	lw $a0, 4($s7) #print print x's
-	syscall
-	li $v0, 4 # print string
-	la $a0, newLine #load new line
-	syscall
-	li $v0, 1
-	lw $a0, 8($s7) #print o's
-	syscall
-	
 	li $v0, 4 #print string
 	la $a0, oVict # load o victory message
 	syscall
 	j Exit #exit program
 	
 tie:
-	#display final position ! temporary !
-	
-	li $v0, 1 #print integer
-	lw $a0, ($s7) #print unmarked
-	syscall
-	li $v0, 4 # print string
-	la $a0, newLine #load new line
-	syscall
-	li $v0, 1
-	lw $a0, 4($s7) #print print x's
-	syscall
-	li $v0, 4 # print string
-	la $a0, newLine #load new line
-	syscall
-	li $v0, 1
-	lw $a0, 8($s7) #print o's
-	syscall
-	
 	li $v0, 4 #print string
 	la $a0, tieMessage # load tie message
 	syscall
